@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Jejak Penang AR | OUM | CBDE3103</title>
+<!--
+  Jejak Penang AR - AR heritage prototype for George Town, Penang
+  Course: CBDE3103 Immersive Technology (OUM), Semester September 2026
+  Made with: MindAR (image tracking) + A-Frame (3D)
+  Student: [YOUR NAME]  |  Matric no: [YOUR MATRIC NO]
+-->
+<script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+<style>
+  :root{--teal:#1f5f5b;--must:#e0a526;--cream:#f7f0e1;--terra:#b5523b;--dark:#282828;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;font-family:Arial,Helvetica,sans-serif;background:#000;overflow:hidden}
+  .hidden{display:none!important}
+  button{font-family:inherit;border:0;cursor:pointer}
+
+  /* ---------- Home screen (Screen 1) ---------- */
+  #home{position:fixed;inset:0;z-index:20;background:var(--cream);display:flex;flex-direction:column;overflow-y:auto}
+  #home .top{background:var(--teal);color:var(--cream);text-align:center;padding:36px 16px 0}
+  #home h1{margin:0;font-size:30px;letter-spacing:1px}
+  #home .sub{margin:6px 0 18px;font-size:15px}
+  #skyline{display:flex;justify-content:center;align-items:flex-end;gap:6px;height:130px}
+  #skyline i{display:block;width:44px;border-radius:2px 2px 0 0;background-image:
+     linear-gradient(var(--teal) 0 0),linear-gradient(var(--teal) 0 0);
+     background-size:10px 14px,10px 14px;background-repeat:repeat-y;background-position:7px 10px,26px 10px}
+  .menu{padding:22px 28px;display:flex;flex-direction:column;gap:14px;max-width:520px;width:100%;margin:0 auto}
+  .btn{padding:16px;border-radius:22px;font-size:18px;font-weight:bold;color:var(--cream);background:var(--teal)}
+  .btn.main{background:var(--must);color:var(--dark);font-size:21px}
+  .btn.grey{background:#c8c4ba;color:var(--dark)}
+  .lang{text-align:center;color:var(--dark);font-size:15px}
+  .lang button{background:none;font-size:15px;font-weight:bold;color:var(--teal);padding:4px 8px}
+  .lang button.on{color:var(--terra);text-decoration:underline}
+  .credit{text-align:center;font-size:12px;color:#777;padding:6px 0 16px}
+
+  /* ---------- AR heads-up display (Screens 2 and 3) ---------- */
+  #hud{position:fixed;inset:0;z-index:10;pointer-events:none}
+  #hud>*{pointer-events:auto}
+  #topbar{position:absolute;top:0;left:0;right:0;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(rgba(0,0,0,.65),transparent)}
+  #topbar button{background:rgba(31,95,91,.9);color:var(--cream);padding:9px 14px;border-radius:16px;font-weight:bold;font-size:15px}
+  #status{position:absolute;top:64px;left:0;right:0;text-align:center;pointer-events:none!important}
+  #status span{display:inline-block;background:rgba(0,0,0,.6);color:var(--cream);padding:8px 16px;border-radius:18px;font-size:15px}
+  #status.found span{background:rgba(224,165,38,.95);color:var(--dark);font-weight:bold}
+  #frame{position:absolute;left:50%;top:48%;width:min(66vw,320px);height:min(66vw,320px);transform:translate(-50%,-50%);pointer-events:none!important}
+  #frame b{position:absolute;width:44px;height:44px;border:6px solid var(--must)}
+  #frame b:nth-child(1){left:0;top:0;border-right:0;border-bottom:0}
+  #frame b:nth-child(2){right:0;top:0;border-left:0;border-bottom:0}
+  #frame b:nth-child(3){left:0;bottom:0;border-right:0;border-top:0}
+  #frame b:nth-child(4){right:0;bottom:0;border-left:0;border-top:0}
+  #bar{position:absolute;left:0;right:0;bottom:0;padding:10px 8px 14px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap;background:linear-gradient(transparent,rgba(0,0,0,.7))}
+  #bar button{background:var(--teal);color:var(--cream);padding:11px 12px;border-radius:16px;font-weight:bold;font-size:14px;min-width:64px}
+  #bar button.acc{background:var(--must);color:var(--dark)}
+  #bar button.dis{opacity:.45}
+
+  /* ---------- Info / quiz panel ---------- */
+  #panel{position:fixed;left:10px;right:10px;bottom:84px;max-height:56vh;overflow-y:auto;z-index:30;background:var(--cream);border-radius:22px;padding:18px 18px 14px;box-shadow:0 6px 24px rgba(0,0,0,.5);max-width:560px;margin:0 auto}
+  #panel h2{margin:0 0 8px;color:var(--teal);font-size:22px}
+  #panel p{margin:0 0 10px;line-height:1.45;color:var(--dark);font-size:16px}
+  #panel .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  #panel .row button,#panel .opt{background:var(--teal);color:var(--cream);border-radius:14px;padding:11px 14px;font-size:15px;font-weight:bold}
+  #panel .opt{display:block;width:100%;text-align:left;margin:6px 0}
+  #panel .opt.ok{background:#2e7d32}#panel .opt.no{background:var(--terra)}
+  #panel .close{background:#c8c4ba!important;color:var(--dark)!important}
+  #panel .stoprow{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #d8d0bd}
+  #panel .stoprow .n{background:var(--must);color:var(--dark);width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;flex:none}
+  #panel .fb{font-weight:bold;margin-top:8px}
+  #toast{position:fixed;left:50%;top:110px;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;padding:10px 16px;border-radius:16px;z-index:40;font-size:14px;max-width:86vw;text-align:center}
+  a-scene{position:fixed;inset:0}
+</style>
+</head>
+<body>
+
+<!-- ============ SCREEN 1: MAIN INTERFACE ============ -->
+<div id="home">
+  <div class="top">
+    <h1>JEJAK PENANG AR</h1>
+    <div class="sub" id="tagline">Walk through George Town's story</div>
+    <div id="skyline"></div>
+  </div>
+  <div class="menu">
+    <button class="btn main" id="bStart">START AR SCAN</button>
+    <button class="btn" id="bTrail">HERITAGE TRAIL</button>
+    <button class="btn" id="bQuiz">LEARN &amp; QUIZ</button>
+    <button class="btn grey" id="bHelp">ABOUT / HELP</button>
+    <div class="lang">Language: <button id="lEn" class="on">EN</button>|<button id="lMs">BM</button></div>
+  </div>
+  <div class="credit">OUM | CBDE3103 Immersive Technology | [YOUR NAME]</div>
+</div>
+
+<!-- ============ SCREENS 2 + 3: AR VIEW ============ -->
+<div id="hud" class="hidden">
+  <div id="topbar"><button id="bBack">&lt; Back</button><button id="bTrail2">Trail</button></div>
+  <div id="status"><span id="statusTxt">Scanning...</span></div>
+  <div id="frame"><b></b><b></b><b></b><b></b></div>
+  <div id="bar">
+    <button id="aStory">Story</button>
+    <button id="aPhoto">Old photo</button>
+    <button id="aSpin">Rotate</button>
+    <button id="aQuiz" class="acc">Quiz</button>
+    <button id="aNext">Next stop</button>
+    <button id="aSnap">Photo</button>
+  </div>
+</div>
+<div id="panel" class="hidden"></div>
+<div id="toast" class="hidden"></div>
+
+<a-scene id="scene"
+  mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; uiLoading: no; uiScanning: no; uiError: no; maxTrack: 1"
+  color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights: true"
+  vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+  <a-light type="ambient" intensity="1.3"></a-light>
+  <a-light type="directional" position="0.6 -1.2 1.8" intensity="1.6"></a-light>
+  <a-camera position="0 0 0" look-controls="enabled: false" cursor="fuse: false; rayOrigin: mouse"></a-camera>
+  <a-entity id="t0" mindar-image-target="targetIndex: 0"></a-entity>
+  <a-entity id="t1" mindar-image-target="targetIndex: 1"></a-entity>
+  <a-entity id="t2" mindar-image-target="targetIndex: 2"></a-entity>
+  <a-entity id="t3" mindar-image-target="targetIndex: 3"></a-entity>
+</a-scene>
+
+<script>
+/* =====================================================================
+   1. CONTENT (text in English + Bahasa Melayu)
+   Please double-check the facts with official sources before submitting.
+   ===================================================================== */
+const STOPS = [
+  { name:"Fort Cornwallis",
+    story:{ en:"Fort Cornwallis stands at the tip of George Town, close to where Francis Light landed in 1786 to set up a British trading settlement. The fort we see today was later rebuilt in brick. It is often described as never having been used in a major battle, but it shows how Penang began as a busy trading port.",
+            ms:"Kota Cornwallis terletak di hujung George Town, berhampiran tempat Francis Light mendarat pada 1786 untuk membuka penempatan perdagangan British. Kota yang kita lihat hari ini dibina semula menggunakan batu bata. Kota ini sering disebut tidak pernah digunakan dalam pertempuran besar, tetapi ia menunjukkan bagaimana Pulau Pinang bermula sebagai pelabuhan perdagangan yang sibuk." },
+    quiz:{ q:{en:"Who landed in Penang in 1786?",ms:"Siapakah yang mendarat di Pulau Pinang pada 1786?"},
+           o:{en:["Francis Light","Stamford Raffles","Parameswara"],ms:["Francis Light","Stamford Raffles","Parameswara"]}, a:0 } },
+  { name:"Khoo Kongsi",
+    story:{ en:"Khoo Kongsi is a clan house of the Khoo family, whose ancestors came from Fujian in China. It is famous for its detailed carvings, painted beams and grand roof. Clan houses like this were places for family meetings, prayers and helping clan members in the new land.",
+            ms:"Khoo Kongsi ialah rumah kelab keluarga Khoo yang nenek moyangnya berasal dari Fujian, China. Ia terkenal dengan ukiran yang halus, alang yang dilukis dan bumbung yang megah. Rumah kongsi seperti ini menjadi tempat mesyuarat keluarga, sembahyang dan membantu ahli kongsi di tanah baharu." },
+    quiz:{ q:{en:"What is Khoo Kongsi?",ms:"Apakah Khoo Kongsi?"},
+           o:{en:["A clan house","A fort","A fish market"],ms:["Rumah kongsi","Kota","Pasar ikan"]}, a:0 } },
+  { name:"Cheong Fatt Tze Mansion",
+    story:{ en:"The Cheong Fatt Tze Mansion is known as the Blue Mansion because of its indigo blue walls. It was built by Cheong Fatt Tze, a wealthy Hakka businessman, in the late 1800s and mixes Chinese and European styles. It has been restored and today visitors can take tours or stay there.",
+            ms:"Rumah Agam Cheong Fatt Tze dikenali sebagai Blue Mansion kerana dindingnya berwarna biru indigo. Ia dibina oleh Cheong Fatt Tze, seorang ahli perniagaan Hakka yang kaya, pada akhir 1800-an dan menggabungkan gaya Cina dan Eropah. Bangunan ini telah dipulihara dan kini pengunjung boleh mengikuti lawatan atau menginap di sana." },
+    quiz:{ q:{en:"Why is it called the Blue Mansion?",ms:"Mengapakah ia digelar Blue Mansion?"},
+           o:{en:["Its indigo blue walls","It is next to the sea","Its roof tiles are blue"],ms:["Dindingnya biru indigo","Ia berhampiran laut","Jubin bumbungnya biru"]}, a:0 } },
+  { name:"Penang Street Art",
+    story:{ en:"Penang became famous for street art after the 2012 George Town Festival, when Lithuanian artist Ernest Zacharevic painted murals such as the children on a bicycle. The murals use old walls to show everyday local life, and they bring new visitors to the heritage streets.",
+            ms:"Pulau Pinang terkenal dengan seni jalanan selepas Festival George Town 2012, apabila artis Lithuania, Ernest Zacharevic, melukis mural seperti kanak-kanak menaiki basikal. Mural ini menggunakan dinding lama untuk menunjukkan kehidupan harian penduduk tempatan dan membawa pengunjung baharu ke jalan-jalan warisan." },
+    quiz:{ q:{en:"Which artist painted the famous bicycle mural?",ms:"Artis manakah yang melukis mural basikal yang terkenal?"},
+           o:{en:["Ernest Zacharevic","Leonardo da Vinci","Lat"],ms:["Ernest Zacharevic","Leonardo da Vinci","Lat"]}, a:0 } }
+];
+const UI = {
+  en:{tag:"Walk through George Town's story",start:"START AR SCAN",trail:"HERITAGE TRAIL",quiz:"LEARN & QUIZ",help:"ABOUT / HELP",
+      back:"< Back",trailBtn:"Trail",story:"Story",photo:"Old photo",rotate:"Rotate",quizBtn:"Quiz",next:"Next stop",snap:"Photo",
+      scanning:"Point your camera at a Jejak marker",found:"Stop found: ",close:"Close",listen:"Listen",
+      trailTitle:"Heritage Trail",marker:"Marker",right:"Correct! Well done.",wrong:"Not quite. The right answer is: ",score:"Score",
+      helpTitle:"How to use",help1:"1. Press START AR SCAN and allow the camera.",help2:"2. Point the camera at one of the four Jejak markers.",
+      help3:"3. When the 3D model appears, use the buttons: Story, Old photo, Rotate, Quiz. Drag your finger to turn the model.",
+      help4:"4. Press Next stop to see which marker to scan next.",noStop:"Scan a marker first.",saved:"Photo saved!",
+      nextTxt:"Next, scan marker ",err:"Camera or target file problem. Check that targets.mind is uploaded and that you opened the HTTPS link.",quizDone:"Quiz finished!",pick:"Pick a stop to start its quiz:"},
+  ms:{tag:"Jejaki kisah George Town",start:"MULA IMBAS AR",trail:"LALUAN WARISAN",quiz:"BELAJAR & KUIZ",help:"TENTANG / BANTUAN",
+      back:"< Kembali",trailBtn:"Laluan",story:"Kisah",photo:"Foto lama",rotate:"Putar",quizBtn:"Kuiz",next:"Hentian seterusnya",snap:"Foto",
+      scanning:"Halakan kamera ke penanda Jejak",found:"Hentian dijumpai: ",close:"Tutup",listen:"Dengar",
+      trailTitle:"Laluan Warisan",marker:"Penanda",right:"Betul! Tahniah.",wrong:"Kurang tepat. Jawapan yang betul: ",score:"Skor",
+      helpTitle:"Cara guna",help1:"1. Tekan MULA IMBAS AR dan benarkan kamera.",help2:"2. Halakan kamera ke salah satu daripada empat penanda Jejak.",
+      help3:"3. Apabila model 3D muncul, gunakan butang: Kisah, Foto lama, Putar, Kuiz. Seret jari untuk memusing model.",
+      help4:"4. Tekan Hentian seterusnya untuk melihat penanda yang perlu diimbas.",noStop:"Imbas penanda dahulu.",saved:"Foto disimpan!",
+      nextTxt:"Seterusnya, imbas penanda ",err:"Masalah kamera atau fail sasaran. Pastikan targets.mind dimuat naik dan anda membuka pautan HTTPS.",quizDone:"Kuiz tamat!",pick:"Pilih hentian untuk mula kuiz:"}
+};
+let lang="en", cur=-1, score=0, answered={};
+const $ = id => document.getElementById(id);
+const T = k => UI[lang][k];
+
+/* =====================================================================
+   2. 3D MODELS (built from simple A-Frame shapes, so no external files)
+   Marker plane = X/Y, "up" from the marker = Z. Every model sits inside
+   a holder rotated 90 degrees so that its own Y axis points out of the marker.
+   ===================================================================== */
+function mk(tag, attrs, parent){
+  const e = document.createElement(tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function box(p,w,h,d,pos,col,extra){ return mk("a-box",Object.assign({width:w,height:h,depth:d,position:pos,color:col,roughness:.9},extra||{}),p); }
+function cyl(p,r,h,pos,col,extra){ return mk("a-cylinder",Object.assign({radius:r,height:h,position:pos,color:col,roughness:.9},extra||{}),p); }
+
+function buildFort(g){
+  box(g,.9,.05,.9,"0 .025 0","#7d7360");
+  const wallC="#9b8f78";
+  box(g,.78,.12,.05,"0 .11 .39",wallC); box(g,.78,.12,.05,"0 .11 -.39",wallC);
+  box(g,.05,.12,.78,".39 .11 0",wallC); box(g,.05,.12,.78,"-.39 .11 0",wallC);
+  [[.39,.39],[-.39,.39],[.39,-.39],[-.39,-.39]].forEach(c=>{
+    cyl(g,.1,.2,c[0]+" .15 "+c[1],"#a99d84"); cyl(g,.105,.03,c[0]+" .26 "+c[1],"#7d7360");
+  });
+  box(g,.3,.1,.24,"0 .1 -.05","#b9ae96");
+  cyl(g,.012,.4,"0 .3 -.05","#5a5a5a");
+  box(g,.16,.09,.005,".08 .5 -.05","#c0392b");
+  cyl(g,.03,.2,"0 .15 .22","#3a3a3a",{rotation:"90 0 0"});
+  [-.04,.04].forEach(x=>cyl(g,.04,.015,x+" .1 .2","#5b3a1e",{rotation:"0 0 90"}));
+}
+function buildKhoo(g){
+  box(g,.95,.05,.75,"0 .025 0","#b9a88a");
+  [-.3,-.1,.1,.3].forEach(x=>cyl(g,.03,.28,x+" .19 .22","#a8321f"));
+  box(g,.75,.2,.42,"0 .15 -.02","#d7c9a8");
+  box(g,.14,.18,.01,"0 .14 .2","#e0a526");
+  const roof = mk("a-cone",{"radius-bottom":.62,"radius-top":.03,height:.24,"segments-radial":4,position:"0 .38 -.02",rotation:"0 45 0",scale:"1 1 .62",color:"#3d5a5a",roughness:.8},g);
+  box(g,.78,.035,.06,"0 .5 -.02","#e0a526");
+  [-.4,.4].forEach(x=>mk("a-sphere",{radius:.04,position:x+" .52 -.02",color:"#e0a526"},g));
+  [-.2,.2].forEach(x=>mk("a-sphere",{radius:.04,position:x+" .27 .26",color:"#c0392b"},g));
+}
+function buildBlue(g){
+  box(g,.95,.04,.7,"0 .02 0","#8a8574");
+  box(g,.85,.36,.5,"0 .22 0","#2a56a5");
+  for(let i=0;i<5;i++){ const x=-.34+i*.17; box(g,.07,.1,.01,x+" .3 .255","#f4efe2"); box(g,.07,.1,.01,x+" .14 .255","#f4efe2"); }
+  box(g,.12,.16,.012,"0 .14 .256","#e0a526");
+  mk("a-cylinder",{radius:.3,height:.9,"segments-radial":3,position:"0 .52 0",rotation:"0 0 90",scale:"1 1 1.7",color:"#7a3b2e",roughness:.8},g);
+  [.28,.34].forEach((z,i)=>box(g,.3-i*.04,.025,.06,"0 "+(.04+i*.025)+" "+(.28+i*.05),"#b9b2a0"));
+  [-.55,.55].forEach(x=>cyl(g,.03,.2,x+" .14 .05","#7a3b2e"));
+}
+function buildArt(g){
+  box(g,.95,.62,.05,"0 .35 0","#d8d2c4");
+  box(g,.85,.52,.012,"0 .35 .03","#e8c36a");
+  [[-.17,.13],[.17,.13]].forEach(w=>mk("a-torus",{radius:.1,"radius-tubular":.012,position:w[0]+" "+(w[1]+.19)+" .05",color:"#222"},g));
+  box(g,.34,.015,.01,"0 .32 .05","#222",{rotation:"0 0 20"});
+  box(g,.2,.015,.01,"0 .36 .05","#222",{rotation:"0 0 -35"});
+  box(g,.14,.015,.01,".15 .42 .05","#222",{rotation:"0 0 80"});
+  mk("a-sphere",{radius:.045,position:"-.02 .5 .06",color:"#f1c27d"},g);
+  box(g,.08,.14,.02,"-.02 .41 .06","#b5523b");
+  mk("a-sphere",{radius:.04,position:".14 .52 .06",color:"#f1c27d"},g);
+  box(g,.07,.12,.02,".14 .43 .06","#1f5f5b");
+  box(g,.9,.04,.08,"0 .02 .02","#7d7360");
+}
+const BUILDERS = [buildFort, buildKhoo, buildBlue, buildArt];
+const spinners = [], photos = [];
+
+STOPS.forEach((s,i)=>{
+  const anchor = $("t"+i);
+  const holder = mk("a-entity",{rotation:"90 0 0",position:"0 0 0"},anchor);
+  const spin = mk("a-entity",{id:"spin"+i,spinner:""},holder);
+  spin.setAttribute("scale","1.05 1.05 1.05");
+  BUILDERS[i](spin); spinners.push(spin);
+  mk("a-text",{value:s.name,align:"center",color:"#f7f0e1",width:1.8,position:"0 .64 .02","wrap-count":22},anchor);
+  const ph = mk("a-plane",{width:.8,height:.53,position:"0 -.72 .22",rotation:"-20 0 0",visible:false,material:"src: assets/oldphotos/stop"+(i+1)+".jpg; shader: flat"},anchor);
+  photos.push(ph);
+  anchor.addEventListener("targetFound",()=>setStop(i));
+  anchor.addEventListener("targetLost",()=>{ if(cur===i){ cur=-1; setStatus(false); } });
+});
+
+AFRAME.registerComponent("spinner",{
+  init(){ this.auto=true; },
+  tick(t,dt){ if(window.spinOn && this.el.object3D.parent && this.el.object3D.parent.visible) this.el.object3D.rotation.y += dt*0.0006; }
+});
+window.spinOn = true;
+
+/* drag to rotate (interactivity) */
+let lastX=null;
+document.addEventListener("touchstart",e=>{ if(e.target.closest("button,#panel")) return; lastX=e.touches[0].clientX; },{passive:true});
+document.addEventListener("touchmove",e=>{ if(lastX===null) return; const x=e.touches[0].clientX; const dx=x-lastX; lastX=x;
+  window.spinOn=false; $("aSpin").classList.add("dis");
+  spinners.forEach(s=>s.object3D.rotation.y += dx*0.012); },{passive:true});
+document.addEventListener("touchend",()=>{ lastX=null; },{passive:true});
+
+/* =====================================================================
+   3. APP LOGIC (screens, buttons, quiz, photo)
+   ===================================================================== */
+function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.remove("hidden"); clearTimeout(toast.h); toast.h=setTimeout(()=>t.classList.add("hidden"),2600); }
+function setStatus(found){
+  const st=$("status"); st.classList.toggle("found",found);
+  $("statusTxt").textContent = found ? T("found")+STOPS[cur].name : T("scanning");
+  $("frame").classList.toggle("hidden",found);
+}
+function setStop(i){
+  cur=i; setStatus(true);
+  photos.forEach(p=>p.setAttribute("visible",false));
+  if(navigator.vibrate) navigator.vibrate(60);
+}
+function openPanel(html){ const p=$("panel"); p.innerHTML=html; p.classList.remove("hidden"); const c=p.querySelector(".close"); if(c) c.onclick=closePanel; }
+function closePanel(){ $("panel").classList.add("hidden"); if(window.speechSynthesis) speechSynthesis.cancel(); }
+function closeBtn(){ return `<button class="close">${T("close")}</button>`; }
+
+function showStory(){
+  if(cur<0) return toast(T("noStop"));
+  openPanel(`<h2>${STOPS[cur].name}</h2><p>${STOPS[cur].story[lang]}</p><div class="row"><button id="pListen">${T("listen")}</button>${closeBtn()}</div>`);
+  $("pListen").onclick=()=>{ if(!window.speechSynthesis) return; speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(STOPS[cur].story[lang]); u.lang = lang==="ms"?"ms-MY":"en-GB"; u.rate=.95; speechSynthesis.speak(u); };
+}
+function showQuiz(i){
+  if(i===undefined||i<0) return toast(T("noStop"));
+  const q=STOPS[i].quiz; let h=`<h2>${STOPS[i].name}</h2><p>${q.q[lang]}</p>`;
+  q.o[lang].forEach((o,k)=>{ h+=`<button class="opt" data-k="${k}">${o}</button>`; });
+  h+=`<p class="fb" id="fb"></p><div class="row"><span style="align-self:center;font-weight:bold;color:#1f5f5b">${T("score")}: <span id="sc">${score}</span>/4</span>${closeBtn()}</div>`;
+  openPanel(h);
+  document.querySelectorAll("#panel .opt").forEach(b=>b.onclick=()=>{
+    if(answered[i]!==undefined) return;
+    const k=+b.dataset.k; answered[i]=k===q.a;
+    if(k===q.a){ score++; b.classList.add("ok"); $("fb").textContent=T("right"); }
+    else { b.classList.add("no"); $("fb").textContent=T("wrong")+q.o[lang][q.a]; document.querySelectorAll("#panel .opt")[q.a].classList.add("ok"); }
+    $("sc").textContent=score;
+    if(Object.keys(answered).length===4) $("fb").textContent += "  "+T("quizDone");
+  });
+}
+function showTrail(){
+  let h=`<h2>${T("trailTitle")}</h2>`;
+  STOPS.forEach((s,i)=>{ h+=`<div class="stoprow"><div class="n">${i+1}</div><div><b>${s.name}</b><br><small>${T("marker")} ${i+1}</small></div></div>`; });
+  openPanel(h+`<div class="row">${closeBtn()}</div>`);
+}
+function showQuizMenu(){
+  let h=`<h2>${T("quiz").replace("&amp;","&")}</h2><p>${T("pick")}</p>`;
+  STOPS.forEach((s,i)=>{ h+=`<button class="opt" data-i="${i}">${i+1}. ${s.name}</button>`; });
+  openPanel(h+`<div class="row">${closeBtn()}</div>`);
+  document.querySelectorAll("#panel .opt").forEach(b=>b.onclick=()=>showQuiz(+b.dataset.i));
+}
+function showHelp(){
+  openPanel(`<h2>${T("helpTitle")}</h2><p>${T("help1")}</p><p>${T("help2")}</p><p>${T("help3")}</p><p>${T("help4")}</p><p><small>Jejak Penang AR | OUM | CBDE3103</small></p><div class="row">${closeBtn()}</div>`);
+}
+function togglePhoto(){
+  if(cur<0) return toast(T("noStop"));
+  const v=photos[cur].getAttribute("visible"); photos[cur].setAttribute("visible",!v);
+}
+function nextStop(){
+  const n=(cur<0?0:(cur+1)%STOPS.length);
+  openPanel(`<h2>${T("nextTxt")}${n+1}</h2><p><b>${STOPS[n].name}</b></p><div class="row">${closeBtn()}</div>`);
+}
+function snap(){
+  const scene=$("scene"), sys=scene.systems["mindar-image-system"], video=(sys&&sys.video)||document.querySelector("video");
+  if(!video) return;
+  const r=scene.renderer; r.render(scene.object3D,scene.camera);
+  const c=r.domElement, out=document.createElement("canvas"); out.width=c.width; out.height=c.height;
+  const x=out.getContext("2d"), vw=video.videoWidth, vh=video.videoHeight, s=Math.max(out.width/vw,out.height/vh), dw=vw*s, dh=vh*s;
+  x.drawImage(video,(out.width-dw)/2,(out.height-dh)/2,dw,dh); x.drawImage(c,0,0);
+  const fs=Math.round(out.width/28); x.font="bold "+fs+"px Arial"; x.fillStyle="rgba(0,0,0,.55)"; x.fillRect(0,out.height-fs*2,out.width,fs*2);
+  x.fillStyle="#f7f0e1"; x.fillText("Jejak Penang AR | OUM | CBDE3103",fs*.6,out.height-fs*.65);
+  out.toBlob(b=>{ const a=document.createElement("a"); a.href=URL.createObjectURL(b); a.download="jejak-penang-ar.png"; document.body.appendChild(a); a.click(); a.remove(); toast(T("saved")); },"image/png");
+}
+
+/* ---- start / stop AR ---- */
+async function startAR(){
+  const scene=$("scene");
+  if(!scene.hasLoaded) await new Promise(r=>scene.addEventListener("loaded",r,{once:true}));
+  $("home").classList.add("hidden"); $("hud").classList.remove("hidden"); closePanel(); setStatus(false);
+  try{ await scene.systems["mindar-image-system"].start(); }catch(e){ console.error(e); toast(T("err")); }
+}
+function stopAR(){
+  try{ $("scene").systems["mindar-image-system"].stop(); }catch(e){}
+  $("hud").classList.add("hidden"); $("home").classList.remove("hidden"); closePanel(); cur=-1;
+}
+$("scene").addEventListener("arError",()=>toast(T("err")));
+
+/* ---- language ---- */
+function applyLang(){
+  document.documentElement.lang = lang==="ms"?"ms":"en";
+  $("tagline").textContent=T("tag"); $("bStart").textContent=T("start"); $("bTrail").textContent=T("trail");
+  $("bQuiz").textContent=T("quiz").replace("&amp;","&"); $("bHelp").textContent=T("help");
+  $("bBack").textContent=T("back"); $("bTrail2").textContent=T("trailBtn"); $("aStory").textContent=T("story");
+  $("aPhoto").textContent=T("photo"); $("aSpin").textContent=T("rotate"); $("aQuiz").textContent=T("quizBtn");
+  $("aNext").textContent=T("next"); $("aSnap").textContent=T("snap");
+  $("lEn").classList.toggle("on",lang==="en"); $("lMs").classList.toggle("on",lang==="ms");
+  if(cur<0) $("statusTxt").textContent=T("scanning");
+}
+
+/* ---- wire up buttons ---- */
+const SKY=[["#b5523b",90],["#e0a526",120],["#f7f0e1",70],["#e0a526",135],["#b5523b",100]];
+SKY.forEach(s=>{ const i=document.createElement("i"); i.style.height=s[1]+"px"; i.style.backgroundColor=s[0]; $("skyline").appendChild(i); });
+$("bStart").onclick=startAR; $("bTrail").onclick=showTrail; $("bQuiz").onclick=showQuizMenu; $("bHelp").onclick=showHelp;
+$("lEn").onclick=()=>{lang="en";applyLang();}; $("lMs").onclick=()=>{lang="ms";applyLang();};
+$("bBack").onclick=stopAR; $("bTrail2").onclick=showTrail;
+$("aStory").onclick=showStory; $("aPhoto").onclick=togglePhoto; $("aQuiz").onclick=()=>showQuiz(cur); $("aNext").onclick=nextStop; $("aSnap").onclick=snap;
+$("aSpin").onclick=()=>{ window.spinOn=!window.spinOn; $("aSpin").classList.toggle("dis",!window.spinOn); };
+applyLang();
+</script>
+</body>
+</html>
